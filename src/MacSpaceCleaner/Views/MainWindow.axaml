@@ -1,0 +1,214 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MacSpaceCleaner.ViewModels"
+        xmlns:conv="using:MacSpaceCleaner.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
+        x:Class="MacSpaceCleaner.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="1100" Height="720"
+        MinWidth="900" MinHeight="600"
+        Title="MacSpaceCleaner — cały Mac">
+
+    <Design.DataContext>
+        <vm:MainViewModel />
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,12,0,6" />
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="16">
+        <!-- Toolbar -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal" Spacing="8" DockPanel.Dock="Left">
+                <Button Content="Skanuj cały Mac"
+                        Command="{Binding ScanCommand}"
+                        IsEnabled="{Binding !IsBusy}"
+                        Classes="accent" />
+                <Button Content="Odśwież dyski"
+                        Command="{Binding RefreshVolumesCommand}"
+                        IsEnabled="{Binding !IsBusy}" />
+                <Button Content="Anuluj"
+                        Command="{Binding CancelCommand}"
+                        IsEnabled="{Binding IsBusy}" />
+                <Button Content="Wyczyść zaznaczone…"
+                        Command="{Binding RequestCleanCommand}"
+                        IsEnabled="{Binding !IsBusy}" />
+            </StackPanel>
+            <ToggleSwitch Content="Pokaż Dev junk"
+                          IsChecked="{Binding ShowDeveloperJunk}"
+                          OffContent="Dev: ukryte"
+                          OnContent="Dev: widoczne"
+                          HorizontalAlignment="Right" />
+        </DockPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="1.1*,1.4*">
+            <!-- Volumes -->
+            <DockPanel Grid.Column="0" Margin="0,0,12,0">
+                <TextBlock Text="Wolumeny" Classes="section" DockPanel.Dock="Top" />
+                <ListBox ItemsSource="{Binding Volumes}"
+                         Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="card">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding DisplayLabel}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Opacity="0.8" FontSize="12"
+                                               Text="{Binding UsedBytes, Converter={x:Static conv:BytesToStringConverter.Instance}, StringFormat='Zajęte: {0}'}" />
+                                    <TextBlock Opacity="0.8" FontSize="12"
+                                               Text="{Binding FreeBytes, Converter={x:Static conv:BytesToStringConverter.Instance}, StringFormat='Wolne: {0}'}" />
+                                    <TextBlock Opacity="0.8" FontSize="12"
+                                               Text="{Binding TotalBytes, Converter={x:Static conv:BytesToStringConverter.Instance}, StringFormat='Łącznie: {0}'}" />
+                                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding UsedPercent}" Height="8" />
+                                    <TextBlock Text="{Binding UsedPercent, Converter={x:Static conv:PercentConverter.Instance}}"
+                                               FontSize="12" Opacity="0.7" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Categories -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="Kategorie czyszczenia" Classes="section" />
+                    <ItemsControl ItemsSource="{Binding SystemCategories}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CategoryItemViewModel">
+                                <Border Classes="card">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <CheckBox Grid.Column="0"
+                                                  IsChecked="{Binding IsSelected}"
+                                                  VerticalAlignment="Top"
+                                                  Margin="0,0,8,0" />
+                                        <StackPanel Grid.Column="1" Spacing="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Description}"
+                                                       TextWrapping="Wrap"
+                                                       Opacity="0.75"
+                                                       FontSize="12" />
+                                            <TextBlock Text="{Binding Error}"
+                                                       Foreground="IndianRed"
+                                                       FontSize="12" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding SizeText}"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Top"
+                                                   Margin="12,0,0,0" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel IsVisible="{Binding ShowDeveloperJunk}">
+                        <TextBlock Text="Dev junk (opcjonalnie)" Classes="section" />
+                        <TextBlock Text="Domyślnie wyłączone. Dotyczy cache narzędzi deweloperskich na dysku Maca."
+                                   Opacity="0.7" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <ItemsControl ItemsSource="{Binding DeveloperCategories}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CategoryItemViewModel">
+                                    <Border Classes="card">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <CheckBox Grid.Column="0"
+                                                      IsChecked="{Binding IsSelected}"
+                                                      VerticalAlignment="Top"
+                                                      Margin="0,0,8,0" />
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Description}"
+                                                           TextWrapping="Wrap"
+                                                           Opacity="0.75"
+                                                           FontSize="12" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding SizeText}"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Top"
+                                                       Margin="12,0,0,0" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <TextBlock Text="Duże pliki (≥ 500 MB)" Classes="section" />
+                    <TextBlock Text="Zaznacz tylko to, co na pewno chcesz usunąć."
+                               Opacity="0.7" FontSize="12" Margin="0,0,0,8" />
+                    <ItemsControl ItemsSource="{Binding LargeFiles}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LargeFileItemViewModel">
+                                <Border Classes="card">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <CheckBox Grid.Column="0"
+                                                  IsChecked="{Binding IsSelected}"
+                                                  Margin="0,0,8,0" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Path}"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="12" />
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding SizeText}"
+                                                   FontWeight="SemiBold"
+                                                   Margin="12,0,0,0" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Log -->
+        <DockPanel Grid.Row="2" Margin="0,12,0,0" MaxHeight="140">
+            <TextBlock Text="Log" Classes="section" DockPanel.Dock="Top" Margin="0,0,0,4" />
+            <ListBox ItemsSource="{Binding LogLines}" FontFamily="Menlo, monospace" FontSize="11" />
+        </DockPanel>
+
+        <!-- Status -->
+        <StackPanel Grid.Row="3" Margin="0,12,0,0" Spacing="6">
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" Height="10" />
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Opacity="0.9" />
+        </StackPanel>
+
+        <!-- Confirm overlay -->
+        <Border Grid.Row="0" Grid.RowSpan="4"
+                IsVisible="{Binding IsConfirmVisible}"
+                Background="#99000000"
+                ZIndex="10">
+            <Border Background="{DynamicResource SystemRegionBrush}"
+                    CornerRadius="12"
+                    Padding="24"
+                    MaxWidth="480"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Potwierdź czyszczenie" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{Binding ConfirmSummary}" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="Anuluj" Command="{Binding CancelConfirmCommand}" />
+                        <Button Content="Usuń zaznaczone"
+                                Command="{Binding ConfirmCleanCommand}"
+                                Classes="accent" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

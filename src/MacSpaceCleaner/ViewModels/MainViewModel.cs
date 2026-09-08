@@ -521,6 +521,9 @@ public partial class CategoryItemViewModel : ObservableObject
 
     partial void OnIsSelectedChanged(bool value) => Model.IsSelected = value;
 
+    [RelayCommand]
+    private void ToggleSelect() => IsSelected = !IsSelected;
+
     public void NotifySizeChanged()
     {
         OnPropertyChanged(nameof(SizeBytes));
@@ -585,6 +588,9 @@ public partial class CandidateItemViewModel : ObservableObject
         Model.IsSelected = value;
         SelectionChanged?.Invoke();
     }
+
+    [RelayCommand]
+    private void ToggleSelect() => IsSelected = !IsSelected;
 
     public void NotifyAnalysisChanged()
     {

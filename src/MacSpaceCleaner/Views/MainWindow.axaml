@@ -168,16 +168,22 @@
                         <ItemsControl ItemsSource="{Binding SystemCategories}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CategoryItemViewModel">
-                                    <Border Classes="card">
-                                        <Grid ColumnDefinitions="Auto,*,Auto">
-                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" Margin="0,0,10,0" VerticalAlignment="Top" />
-                                            <StackPanel Grid.Column="1" Spacing="2">
-                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding Description}" Classes="muted" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontWeight="SemiBold" Margin="12,0,0,0" />
-                                        </Grid>
-                                    </Border>
+                                    <Button Classes="card-hit" Command="{Binding ToggleSelectCommand}">
+                                        <Border Classes="card">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <CheckBox Grid.Column="0"
+                                                          IsChecked="{Binding IsSelected}"
+                                                          IsHitTestVisible="False"
+                                                          Margin="0,0,10,0"
+                                                          VerticalAlignment="Top" />
+                                                <StackPanel Grid.Column="1" Spacing="2">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding Description}" Classes="muted" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontWeight="SemiBold" Margin="12,0,0,0" />
+                                            </Grid>
+                                        </Border>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -187,16 +193,22 @@
                             <ItemsControl ItemsSource="{Binding DeveloperCategories}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:CategoryItemViewModel">
-                                        <Border Classes="card">
-                                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" Margin="0,0,10,0" VerticalAlignment="Top" />
-                                                <StackPanel Grid.Column="1" Spacing="2">
-                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                                    <TextBlock Text="{Binding Description}" Classes="muted" />
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontWeight="SemiBold" Margin="12,0,0,0" />
-                                            </Grid>
-                                        </Border>
+                                        <Button Classes="card-hit" Command="{Binding ToggleSelectCommand}">
+                                            <Border Classes="card">
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                                    <CheckBox Grid.Column="0"
+                                                              IsChecked="{Binding IsSelected}"
+                                                              IsHitTestVisible="False"
+                                                              Margin="0,0,10,0"
+                                                              VerticalAlignment="Top" />
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding Description}" Classes="muted" />
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontWeight="SemiBold" Margin="12,0,0,0" />
+                                                </Grid>
+                                            </Border>
+                                        </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -225,30 +237,39 @@
             <ListBox ItemsSource="{Binding VisibleCandidates}" Background="Transparent" BorderThickness="0">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:CandidateItemViewModel">
-                        <Border Classes="card">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" Margin="0,0,12,0" VerticalAlignment="Top" />
-                                <StackPanel Grid.Column="1" Spacing="4">
-                                    <DockPanel LastChildFill="True">
-                                        <Border DockPanel.Dock="Left" Classes="chip recommend" Margin="0,0,8,0">
-                                            <TextBlock Text="{Binding RecommendationLabel}" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource AppAccentBrush}" />
-                                        </Border>
-                                        <TextBlock DockPanel.Dock="Left" Text="{Binding ScoreText}" Classes="muted"
-                                                   FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    </DockPanel>
-                                    <TextBlock Text="{Binding Path}" Classes="muted" FontFamily="Menlo, monospace" FontSize="11" />
-                                    <TextBlock Text="{Binding AnalysisReason}" FontSize="12.5" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding CategoryTitle}" Classes="muted" FontSize="11" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontWeight="Bold"
-                                           VerticalAlignment="Top" Margin="14,2,14,0" />
-                                <Button Grid.Column="3" Content="Finder" Classes="tool"
-                                        Command="{Binding RevealInFinderCommand}" VerticalAlignment="Top"
-                                        ToolTip.Tip="Reveal in Finder" />
-                            </Grid>
-                        </Border>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Button Grid.Column="0" Classes="card-hit" Command="{Binding ToggleSelectCommand}">
+                                <Border Classes="card" Margin="0,0,8,8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <CheckBox Grid.Column="0"
+                                                  IsChecked="{Binding IsSelected}"
+                                                  IsHitTestVisible="False"
+                                                  Margin="0,0,12,0"
+                                                  VerticalAlignment="Top" />
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <DockPanel LastChildFill="True">
+                                                <Border DockPanel.Dock="Left" Classes="chip recommend" Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding RecommendationLabel}" FontSize="11" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AppAccentBrush}" />
+                                                </Border>
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding ScoreText}" Classes="muted"
+                                                           FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Path}" Classes="muted" FontFamily="Menlo, monospace" FontSize="11" />
+                                            <TextBlock Text="{Binding AnalysisReason}" FontSize="12.5" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding CategoryTitle}" Classes="muted" FontSize="11" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontWeight="Bold"
+                                                   VerticalAlignment="Top" Margin="14,2,0,0" />
+                                    </Grid>
+                                </Border>
+                            </Button>
+                            <Button Grid.Column="1" Content="Finder" Classes="tool"
+                                    Command="{Binding RevealInFinderCommand}" VerticalAlignment="Top"
+                                    Margin="0,12,0,0"
+                                    ToolTip.Tip="Reveal in Finder" />
+                        </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

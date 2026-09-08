@@ -1,55 +1,88 @@
 # MacSpaceCleaner
 
-Aplikacja desktopowa na **macOS** (C# / .NET 9 + Avalonia), która skanuje **cały komputer** — wszystkie zamontowane wolumeny — i pomaga bezpiecznie zwolnić miejsce.
+A focused macOS desktop utility that finds reclaimable disk space across **every mounted volume**, ranks likely junk with local heuristics (and optional cloud AI), then deletes only what you explicitly confirm.
 
-## Wymagania
+Built with **C# / .NET 9** and **Avalonia**.
+
+![.NET](https://img.shields.io/badge/.NET-9-512BD4?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-macOS-000000?style=flat-square)
+![UI](https://img.shields.io/badge/UI-Avalonia-0F766E?style=flat-square)
+
+---
+
+## Why it exists
+
+macOS “Storage” often looks full even when Downloads are empty. The real weight is usually developer caches, simulators leftovers, Xcode DerivedData, Gradle/CocoaPods, browser/Electron caches, and forgotten large installers — spread across the system Data volume and external disks.
+
+MacSpaceCleaner is built for that reality: **whole machine**, not a single folder.
+
+## Features
+
+- **Multi-volume scan** — internal Data volume, `/Volumes/*`, and other mounted disks
+- **Category scan** — Trash, user caches, logs, temp files, large Downloads, optional developer junk
+- **File-level review** — path, size, checkbox, Reveal in Finder (`open -R`)
+- **Smart ranking** — local heuristics score “safe to delete” candidates
+- **Optional AI** — Groq (preferred) or OpenAI ranks the heaviest items
+- **Safe by design** — no `sudo`, never touches `/System` or `/Applications`, always asks for confirmation
+- **Clear result** — after cleanup, a **Deleted** success screen shows how much space was freed
+
+## Requirements
 
 - macOS
 - [.NET 9 SDK](https://dotnet.microsoft.com/download)
-- (opcjonalnie) miejsce na cache NuGet — przy pełnym dysku systemowym ustaw:
+
+If your system disk is nearly full, point NuGet/temp to an external drive:
 
 ```bash
 export NUGET_PACKAGES=/Volumes/ADATA_SE880/nuget-packages
 export TMPDIR=/Volumes/ADATA_SE880/tmp
 ```
 
-## Uruchomienie
+## Run
 
 ```bash
-cd /Volumes/ADATA_SE880/projects/MacSpaceCleaner
+cd /path/to/MacSpaceCleaner
 dotnet run --project src/MacSpaceCleaner/MacSpaceCleaner.csproj -c Release
 ```
 
-## Co robi
+### Workflow
 
-1. **Lista wolumenów** — wewnętrzny dysk, ADATA i inne `/Volumes/*` (rozmiar / zajęte / wolne).
-2. **Skan kategorii** z szacunkiem GB (kosz, cache, logi, tmp, Downloads, opcjonalnie Dev junk).
-3. **Dalej** — lista plików/folderów + **analiza**:
-   - zawsze **heurystyka lokalna** (cache, kosz, DerivedData, tmp, duże instalatory…),
-   - opcjonalnie **Groq** (darmowy tier) lub OpenAI — największe pozycje.
-4. Filtr **Tylko rekomendowane**, score, powód, **W Finderze**, potem **Wyczyść zaznaczone**.
+1. **Scan Mac** — measure volumes and cleanup categories  
+2. **Next** — build the candidate list, run heuristics (+ AI if configured)  
+3. Review / tweak selection (Recommended / All / None, Finder)  
+4. **Clean selected…** — confirm, delete, see the **Deleted** summary  
 
-### Klucz AI (opcjonalnie) — preferowane Groq
+## Optional AI keys
+
+Local heuristics always work. For cloud ranking:
 
 ```bash
 mkdir -p ~/.config/macspacecleaner
+
+# Preferred (Groq free tier)
 echo "gsk_..." > ~/.config/macspacecleaner/groq_api_key
-# albo: export GROQ_API_KEY="gsk_..."
+
+# Or OpenAI
+echo "sk-..." > ~/.config/macspacecleaner/openai_api_key
 ```
 
-Model Groq: `openai/gpt-oss-20b` (nadpisz `MACSPACECLEANER_GROQ_MODEL`).  
-Przy `model_not_found` appka próbuje kolejne modele zapasowe.  
-OpenAI nadal działa przez `openai_api_key` / `OPENAI_API_KEY`.
+Environment variables also work: `GROQ_API_KEY`, `OPENAI_API_KEY`.  
+Default Groq model: `openai/gpt-oss-20b` (override with `MACSPACECLEANER_GROQ_MODEL`). Deprecated models automatically fall back.
 
-Czyszczenie **wymaga potwierdzenia**. Nie używa `sudo`, nie rusza `/System`, `/Applications` ani całego katalogu domowego.
+## Project layout
 
-## Ostrzeżenia
+```
+src/MacSpaceCleaner/          Avalonia desktop UI
+src/MacSpaceCleaner.Core/     Volume scan, categories, analyzers, safe delete
+```
 
-- Usuwanie jest trwałe (nie zawsze ląduje w Koszu).
-- Cache narzędzi deweloperskich odbuduje się przy następnym buildzie — może chwilę potrwać.
-- Przy bardzo pełnym dysku systemowym najpierw zwolnij kilka GB (np. cache), inaczej `dotnet restore` może się wyłożyć.
+## Safety notes
 
-## Struktura
+- Deletion is permanent (not always recoverable via Trash)
+- Developer caches will regenerate on the next build
+- Always use **Finder** on unfamiliar paths before deleting
+- Keep a few GB free so restore/build tooling can run
 
-- `src/MacSpaceCleaner` — GUI Avalonia
-- `src/MacSpaceCleaner.Core` — skan wolumenów, kategorie, bezpieczne usuwanie
+## License
+
+Private repository. All rights reserved unless otherwise stated by the owner.

@@ -26,7 +26,7 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<string> LogLines { get; } = [];
 
     [ObservableProperty]
-    private string _statusText = "Gotowy. Kliknij „Skanuj”, potem „Dalej”, aby przejrzeć pliki do usunięcia.";
+    private string _statusText = "Ready. Scan your Mac, then review files before deleting.";
 
     [ObservableProperty]
     private double _progressValue;
@@ -43,7 +43,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isConfirmVisible;
 
-    /// <summary>0 = przegląd dysków/kategorii, 1 = lista plików.</summary>
+    /// <summary>0 = overview, 1 = file review.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsOverviewStep))]
     [NotifyPropertyChangedFor(nameof(IsReviewStep))]
@@ -58,16 +58,25 @@ public partial class MainViewModel : ViewModelBase
     private string _reviewSummary = string.Empty;
 
     [ObservableProperty]
-    private string _selectedTotalText = "Zaznaczone: 0 B";
+    private string _selectedTotalText = "Selected: 0 B";
 
     [ObservableProperty]
     private bool _showOnlyRecommended = true;
 
     [ObservableProperty]
-    private string _aiStatusText = "Analiza AI: heurystyka lokalna zawsze; Groq/OpenAI jeśli jest klucz.";
+    private string _aiStatusText = "Local heuristics always run. Optional cloud AI via Groq/OpenAI.";
 
     [ObservableProperty]
     private bool _hasOpenAiKey;
+
+    [ObservableProperty]
+    private bool _isSuccessVisible;
+
+    [ObservableProperty]
+    private string _successTitle = "Deleted";
+
+    [ObservableProperty]
+    private string _successMessage = string.Empty;
 
     public bool IsOverviewStep => WizardStep == 0;
     public bool IsReviewStep => WizardStep == 1;
@@ -78,8 +87,8 @@ public partial class MainViewModel : ViewModelBase
         HasOpenAiKey = _aiAnalyzer.IsAvailable;
         var provider = _aiAnalyzer.ActiveProviderName;
         AiStatusText = HasOpenAiKey
-            ? $"Klucz {provider} wykryty — po „Dalej” uruchomi się też analiza AI największych plików."
-            : "Bez klucza API działa heurystyka lokalna. Preferowane: Groq (~/.config/macspacecleaner/groq_api_key).";
+            ? $"{provider} API key detected — cloud AI will rank the largest items after Next."
+            : "No API key — local heuristics only. Optional: ~/.config/macspacecleaner/groq_api_key";
         ReloadCategoryShell();
         RefreshVolumes();
     }
@@ -104,7 +113,7 @@ public partial class MainViewModel : ViewModelBase
         Volumes.Clear();
         foreach (var v in _volumeScanner.Scan())
             Volumes.Add(v);
-        StatusText = $"Znaleziono {Volumes.Count} wolumen(ów).";
+        StatusText = $"Found {Volumes.Count} volume(s).";
     }
 
     [RelayCommand]
@@ -140,7 +149,7 @@ public partial class MainViewModel : ViewModelBase
             foreach (var item in SystemCategories.Concat(DeveloperCategories))
                 item.NotifySizeChanged();
 
-            StatusText = "Szukam dużych plików (≥ 500 MB)…";
+            StatusText = "Looking for large files (≥ 500 MB)…";
             LargeFiles.Clear();
             var large = await _largeFileFinder.FindAsync(Volumes, progress: progress, ct: ct)
                 .ConfigureAwait(true);
@@ -150,18 +159,18 @@ public partial class MainViewModel : ViewModelBase
             var reclaimable = all.Where(c => c.IsSelected).Sum(c => c.SizeBytes);
             HasScanResult = true;
             StatusText =
-                $"Skan OK. Zaznaczone kategorie ≈ {ByteFormatter.Format(reclaimable)}. " +
-                $"Dużych plików: {LargeFiles.Count}. Kliknij „Dalej”, aby zobaczyć listę plików.";
+                $"Scan complete. Selected categories ≈ {ByteFormatter.Format(reclaimable)}. " +
+                $"Large files: {LargeFiles.Count}. Click Next to review paths.";
             LogLines.Add(StatusText);
         }
         catch (OperationCanceledException)
         {
-            StatusText = "Skan anulowany.";
+            StatusText = "Scan cancelled.";
             HasScanResult = false;
         }
         catch (Exception ex)
         {
-            StatusText = $"Błąd skanu: {ex.Message}";
+            StatusText = $"Scan error: {ex.Message}";
             LogLines.Add(StatusText);
             HasScanResult = false;
         }
@@ -195,7 +204,7 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            StatusText = "Buduję listę plików do przejrzenia…";
+            StatusText = "Building review list…";
             var cats = SystemCategories.Concat(DeveloperCategories).Select(c => c.Model).ToList();
             var large = LargeFiles.Select(f => f.Model).ToList();
             var progress = new Progress<CleanupProgress>(p =>
@@ -207,7 +216,7 @@ public partial class MainViewModel : ViewModelBase
             var built = await _candidateBuilder.BuildAsync(cats, large, progress, ct)
                 .ConfigureAwait(true);
 
-            StatusText = "Analiza heurystyczna (niepotrzebne + ciężkie)…";
+            StatusText = "Running local junk heuristics…";
             _smartAnalyzer.Analyze(built.ToList());
 
             HasOpenAiKey = _aiAnalyzer.IsAvailable;
@@ -221,8 +230,8 @@ public partial class MainViewModel : ViewModelBase
             else
             {
                 AiStatusText =
-                    "Heurystyka lokalna OK. Dla AI ustaw Groq: ~/.config/macspacecleaner/groq_api_key " +
-                    "(albo OPENAI_API_KEY) i kliknij „Analizuj AI”.";
+                    "Local heuristics applied. For cloud AI, add ~/.config/macspacecleaner/groq_api_key " +
+                    "then click Analyze AI.";
             }
 
             foreach (var entry in built.OrderByDescending(e => e.JunkScore).ThenByDescending(e => e.SizeBytes))
@@ -234,24 +243,25 @@ public partial class MainViewModel : ViewModelBase
 
             WizardStep = 1;
             ShowOnlyRecommended = true;
+            foreach (var c in Candidates)
+                c.IsSelected = c.IsRecommended;
             RefreshVisibleCandidates();
+            RecalculateSelectedTotal();
             var recCount = Candidates.Count(c => c.IsRecommended);
             var recBytes = Candidates.Where(c => c.IsRecommended).Sum(c => c.SizeBytes);
             ReviewSummary =
-                $"Lista: {Candidates.Count} pozycji. Rekomendowane do usunięcia: {recCount} " +
-                $"(~{ByteFormatter.Format(recBytes)}). Filtr „Tylko rekomendowane” pokazuje ciężki junk. " +
-                "„W Finderze” wskazuje plik.";
-            RecalculateSelectedTotal();
+                $"List: {Candidates.Count} items. Recommended: {recCount} (~{ByteFormatter.Format(recBytes)}). " +
+                "Only recommended are selected by default. Use Finder to inspect a path.";
             StatusText = ReviewSummary;
-            LogLines.Add($"Lista plików: {Candidates.Count}, rekomendowane: {recCount}");
+            LogLines.Add($"File list: {Candidates.Count}, recommended: {recCount}");
         }
         catch (OperationCanceledException)
         {
-            StatusText = "Budowanie listy anulowane.";
+            StatusText = "Building list cancelled.";
         }
         catch (Exception ex)
         {
-            StatusText = $"Błąd listy plików: {ex.Message}";
+            StatusText = $"File list error: {ex.Message}";
             LogLines.Add(StatusText);
         }
         finally
@@ -269,8 +279,8 @@ public partial class MainViewModel : ViewModelBase
     {
         WizardStep = 0;
         StatusText = HasScanResult
-            ? "Wrócono do kategorii. Możesz zmienić zaznaczenie i znów kliknąć „Dalej”."
-            : "Gotowy do skanu.";
+            ? "Back to categories. Adjust selection and click Next again."
+            : "Ready to scan.";
     }
 
     [RelayCommand]
@@ -302,7 +312,7 @@ public partial class MainViewModel : ViewModelBase
     {
         var bytes = Candidates.Where(c => c.IsSelected).Sum(c => c.SizeBytes);
         var count = Candidates.Count(c => c.IsSelected);
-        SelectedTotalText = $"Zaznaczone: {count} · {ByteFormatter.Format(bytes)}";
+        SelectedTotalText = $"Selected: {count} · {ByteFormatter.Format(bytes)}";
     }
 
     private void RefreshVisibleCandidates()
@@ -327,8 +337,8 @@ public partial class MainViewModel : ViewModelBase
         if (!HasOpenAiKey)
         {
             StatusText =
-                "Brak klucza API. Ustaw GROQ_API_KEY / ~/.config/macspacecleaner/groq_api_key " +
-                "albo OPENAI_API_KEY.";
+                "No API key. Set GROQ_API_KEY / ~/.config/macspacecleaner/groq_api_key " +
+                "or OPENAI_API_KEY.";
             AiStatusText = StatusText;
             return;
         }
@@ -360,11 +370,11 @@ public partial class MainViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            StatusText = "Analiza AI anulowana.";
+            StatusText = "AI analysis cancelled.";
         }
         catch (Exception ex)
         {
-            StatusText = $"Błąd AI: {ex.Message}";
+            StatusText = $"AI error: {ex.Message}";
             AiStatusText = StatusText;
             LogLines.Add(StatusText);
         }
@@ -377,25 +387,31 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void DismissSuccess()
+    {
+        IsSuccessVisible = false;
+    }
+
+    [RelayCommand]
     private void RequestClean()
     {
         if (WizardStep != 1)
         {
-            StatusText = "Najpierw kliknij „Dalej” i przejrzyj listę plików.";
+            StatusText = "Open the file review step first (Next).";
             return;
         }
 
         var selected = Candidates.Where(c => c.IsSelected).ToList();
         if (selected.Count == 0)
         {
-            StatusText = "Nic nie zaznaczono.";
+            StatusText = "Nothing selected.";
             return;
         }
 
         var bytes = selected.Sum(c => c.SizeBytes);
         ConfirmSummary =
-            $"Usuniesz {selected.Count} pozycji (szacunkowo {ByteFormatter.Format(bytes)}).\n\n" +
-            "Tej operacji nie da się cofnąć. Kontynuować?";
+            $"You are about to permanently delete {selected.Count} item(s) " +
+            $"(about {ByteFormatter.Format(bytes)}).\n\nThis cannot be undone. Continue?";
         IsConfirmVisible = true;
     }
 
@@ -434,9 +450,16 @@ public partial class MainViewModel : ViewModelBase
                 LogLines.Add(line);
 
             StatusText =
-                $"Czyszczenie zakończone. Zwolniono ≈ {ByteFormatter.Format(result.FreedBytes)} " +
-                $"({result.DeletedItems} elementów, błędów: {result.Errors.Count}).";
+                $"Deleted. Freed ≈ {ByteFormatter.Format(result.FreedBytes)} " +
+                $"({result.DeletedItems} items, errors: {result.Errors.Count}).";
             LogLines.Add(StatusText);
+
+            SuccessTitle = "Deleted";
+            SuccessMessage =
+                $"Successfully removed {result.DeletedItems} item(s).\n" +
+                $"Space freed: {ByteFormatter.Format(result.FreedBytes)}" +
+                (result.Errors.Count > 0 ? $"\n{result.Errors.Count} item(s) could not be removed." : ".");
+            IsSuccessVisible = true;
 
             // Remove deleted from list
             var stillThere = Candidates
@@ -446,17 +469,21 @@ public partial class MainViewModel : ViewModelBase
             foreach (var c in stillThere)
                 Candidates.Add(c);
 
+            RefreshVisibleCandidates();
             RecalculateSelectedTotal();
             RefreshVolumes();
             HasScanResult = false;
+            ReviewSummary = stillThere.Count == 0
+                ? "Cleanup finished. Nothing left in this list — scan again if you want another pass."
+                : $"Cleanup finished. {stillThere.Count} item(s) remain in the list.";
         }
         catch (OperationCanceledException)
         {
-            StatusText = "Czyszczenie anulowane.";
+            StatusText = "Cleanup cancelled.";
         }
         catch (Exception ex)
         {
-            StatusText = $"Błąd czyszczenia: {ex.Message}";
+            StatusText = $"Cleanup error: {ex.Message}";
             LogLines.Add(StatusText);
         }
         finally
@@ -542,13 +569,13 @@ public partial class CandidateItemViewModel : ObservableObject
     public string CategoryTitle => Model.CategoryTitle;
     public long SizeBytes => Model.SizeBytes;
     public string SizeText => ByteFormatter.Format(Model.SizeBytes);
-    public string KindLabel => Model.IsDirectory ? "Folder" : "Plik";
+    public string KindLabel => Model.IsDirectory ? "Folder" : "File";
     public int JunkScore => Model.JunkScore;
     public string ScoreText => $"Score {Model.JunkScore}";
     public string? AnalysisReason => Model.AnalysisReason;
     public bool IsRecommended => Model.IsRecommended;
     public string AnalysisSource => Model.AnalysisSource;
-    public string RecommendationLabel => Model.IsRecommended ? "Rekomendowane" : "Do oceny";
+    public string RecommendationLabel => Model.IsRecommended ? "Recommended" : "Review";
 
     [ObservableProperty]
     private bool _isSelected;

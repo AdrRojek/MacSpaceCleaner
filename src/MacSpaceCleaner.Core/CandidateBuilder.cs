@@ -32,7 +32,7 @@ public sealed class CandidateBuilder
                         Total = total
                     });
 
-                    AddTarget(map, target, category.Title, selectedByDefault: true, ct);
+                    AddTarget(map, target, category.Title, selectedByDefault: false, ct);
                     if (map.Count >= MaxCandidates)
                         break;
                 }

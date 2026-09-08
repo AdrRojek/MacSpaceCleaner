@@ -2,14 +2,65 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="MacSpaceCleaner.App"
              xmlns:local="using:MacSpaceCleaner"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Light">
 
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
 
+    <Application.Resources>
+        <SolidColorBrush x:Key="AppBgBrush">#F4F6F8</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSurfaceBrush">#FFFFFF</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSurfaceMutedBrush">#EEF2F5</SolidColorBrush>
+        <SolidColorBrush x:Key="AppBorderBrush">#D8DEE4</SolidColorBrush>
+        <SolidColorBrush x:Key="AppTextBrush">#15202B</SolidColorBrush>
+        <SolidColorBrush x:Key="AppMutedBrush">#5B6B7C</SolidColorBrush>
+        <SolidColorBrush x:Key="AppAccentBrush">#0F766E</SolidColorBrush>
+        <SolidColorBrush x:Key="AppAccentSoftBrush">#D1FAF4</SolidColorBrush>
+        <SolidColorBrush x:Key="AppDangerBrush">#B42318</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSuccessBrush">#067647</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSuccessSoftBrush">#DCFAE6</SolidColorBrush>
+        <SolidColorBrush x:Key="AppWarnSoftBrush">#FEF0C7</SolidColorBrush>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
+
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource AppBgBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
+        </Style>
+
+        <Style Selector="Button.tool">
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,8" />
+        </Style>
+
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="{DynamicResource AppAccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,9" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#0D9488" />
+        </Style>
+
+        <Style Selector="Button.ghost">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,8" />
+        </Style>
+
+        <Style Selector="ProgressBar">
+            <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
     </Application.Styles>
 </Application>

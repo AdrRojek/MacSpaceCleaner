@@ -1,6 +1,6 @@
 # MacSpaceCleaner
 
-A focused macOS desktop utility that finds reclaimable disk space across **every mounted volume**, ranks likely junk with local heuristics (and optional cloud AI), then deletes only what you explicitly confirm.
+A macOS desktop utility that finds reclaimable disk space across **all mounted disks for any user** — the internal Macintosh HD / Data volume **and every external drive under `/Volumes`** (USB SSDs, HDDs, SD cards, etc.). It ranks likely junk with local heuristics (optional cloud AI), then deletes only what you confirm.
 
 Built with **C# / .NET 9** and **Avalonia**.
 
@@ -12,13 +12,13 @@ Built with **C# / .NET 9** and **Avalonia**.
 
 ## Why it exists
 
-macOS “Storage” often looks full even when Downloads are empty. The real weight is usually developer caches, simulators leftovers, Xcode DerivedData, Gradle/CocoaPods, browser/Electron caches, and forgotten large installers — spread across the system Data volume and external disks.
+macOS “Storage” often looks full even when Downloads are empty. The real weight is usually developer caches, leftover build artifacts, Xcode DerivedData, Gradle/CocoaPods, browser caches, and forgotten installers — on the **system disk** and on **any attached external disks**.
 
-MacSpaceCleaner is built for that reality: **whole machine**, not a single folder.
+MacSpaceCleaner targets the **whole machine for whoever runs it**, not one hard-coded drive name.
 
 ## Features
 
-- **Multi-volume scan** — internal Data volume, `/Volumes/*`, and other mounted disks
+- **All disks** — discovers `/`, `/System/Volumes/Data`, and every mount in `/Volumes/*` for the current user
 - **Category scan** — Trash, user caches, logs, temp files, large Downloads, optional developer junk
 - **File-level review** — path, size, checkbox, Reveal in Finder (`open -R`)
 - **Smart ranking** — local heuristics score “safe to delete” candidates
@@ -31,12 +31,18 @@ MacSpaceCleaner is built for that reality: **whole machine**, not a single folde
 - macOS
 - [.NET 9 SDK](https://dotnet.microsoft.com/download)
 
-If your system disk is nearly full, point NuGet/temp to an external drive:
+### Optional: free space for builds
+
+If your **system** disk is nearly full and `dotnet restore` fails, temporarily point NuGet/temp to **any** disk with free space (example — replace with your own mount):
 
 ```bash
-export NUGET_PACKAGES=/Volumes/ADATA_SE880/nuget-packages
-export TMPDIR=/Volumes/ADATA_SE880/tmp
+# Example only — use YOUR external disk path, not a fixed brand name
+export NUGET_PACKAGES="/Volumes/YourExternalDisk/nuget-packages"
+export TMPDIR="/Volumes/YourExternalDisk/tmp"
+mkdir -p "$NUGET_PACKAGES" "$TMPDIR"
 ```
+
+This is only for building/running tooling. The app itself always scans **all** mounted volumes.
 
 ## Run
 
@@ -47,14 +53,14 @@ dotnet run --project src/MacSpaceCleaner/MacSpaceCleaner.csproj -c Release
 
 ### Workflow
 
-1. **Scan Mac** — measure volumes and cleanup categories  
+1. **Scan Mac** — list every volume + cleanup categories  
 2. **Next** — build the candidate list, run heuristics (+ AI if configured)  
 3. Review / tweak selection (Recommended / All / None, Finder)  
 4. **Clean selected…** — confirm, delete, see the **Deleted** summary  
 
 ## Optional AI keys
 
-Local heuristics always work. For cloud ranking:
+Local heuristics always work. For cloud ranking (per-user config in the home folder):
 
 ```bash
 mkdir -p ~/.config/macspacecleaner
@@ -67,7 +73,7 @@ echo "sk-..." > ~/.config/macspacecleaner/openai_api_key
 ```
 
 Environment variables also work: `GROQ_API_KEY`, `OPENAI_API_KEY`.  
-Default Groq model: `openai/gpt-oss-20b` (override with `MACSPACECLEANER_GROQ_MODEL`). Deprecated models automatically fall back.
+Default Groq model: `openai/gpt-oss-20b` (override with `MACSPACECLEANER_GROQ_MODEL`).
 
 ## Project layout
 

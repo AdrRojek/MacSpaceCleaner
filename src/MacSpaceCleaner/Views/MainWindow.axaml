@@ -70,7 +70,7 @@
                 <StackPanel Grid.Column="0" Spacing="4">
                     <TextBlock Text="MacSpaceCleaner" Classes="hero" />
                     <TextBlock Classes="muted"
-                               Text="Scan every mounted volume, review reclaimable space, then delete with confirmation." />
+                               Text="Scans every mounted disk for this Mac user — internal storage and all drives under /Volumes." />
                 </StackPanel>
                 <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                               IsChecked="{Binding ShowDeveloperJunk}"

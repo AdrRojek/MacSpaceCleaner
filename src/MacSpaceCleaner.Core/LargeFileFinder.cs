@@ -13,7 +13,7 @@ public sealed class LargeFileFinder
         "System",
         "proc",
         "dev",
-        "Volumes" // avoid double-scanning when starting from /
+        "Volumes" // avoid double-scanning when walking from /
     };
 
     public async Task<IReadOnlyList<LargeFileEntry>> FindAsync(
@@ -32,9 +32,15 @@ public sealed class LargeFileFinder
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
 
-            // Prefer Data + /Volumes over raw /
+            // Prefer Data + /Volumes over sealed system root
             if (roots.Contains("/System/Volumes/Data"))
                 roots.RemoveAll(r => r == "/");
+
+            if (roots.Count == 0)
+                return (IReadOnlyList<LargeFileEntry>)found;
+
+            // Give every disk a fair share so one huge volume doesn't hide the rest
+            var perVolumeCap = Math.Max(20, (maxResults + roots.Count - 1) / roots.Count);
 
             var index = 0;
             foreach (var root in roots)
@@ -42,14 +48,13 @@ public sealed class LargeFileFinder
                 ct.ThrowIfCancellationRequested();
                 progress?.Report(new CleanupProgress
                 {
-                    Message = $"Szukam dużych plików: {root}",
+                    Message = $"Scanning large files on {root}",
                     Current = index++,
                     Total = roots.Count
                 });
 
-                ScanRoot(root, minBytes, found, maxResults, ct);
-                if (found.Count >= maxResults)
-                    break;
+                var before = found.Count;
+                ScanRoot(root, minBytes, found, before + perVolumeCap, ct);
             }
 
             return (IReadOnlyList<LargeFileEntry>)found
@@ -70,7 +75,7 @@ public sealed class LargeFileFinder
             return;
 
         var stack = new Stack<string>();
-        stack.Push(root == "/" ? "/Users" : root); // don't walk entire SIP system from /
+        stack.Push(root == "/" ? "/Users" : root);
 
         var visited = 0;
         while (stack.Count > 0 && found.Count < maxResults)

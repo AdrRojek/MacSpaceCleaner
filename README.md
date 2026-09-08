@@ -37,7 +37,8 @@ echo "gsk_..." > ~/.config/macspacecleaner/groq_api_key
 # albo: export GROQ_API_KEY="gsk_..."
 ```
 
-Model Groq: `llama-3.3-70b-versatile` (nadpisz `MACSPACECLEANER_GROQ_MODEL`).  
+Model Groq: `openai/gpt-oss-20b` (nadpisz `MACSPACECLEANER_GROQ_MODEL`).  
+Przy `model_not_found` appka próbuje kolejne modele zapasowe.  
 OpenAI nadal działa przez `openai_api_key` / `OPENAI_API_KEY`.
 
 Czyszczenie **wymaga potwierdzenia**. Nie używa `sudo`, nie rusza `/System`, `/Applications` ani całego katalogu domowego.

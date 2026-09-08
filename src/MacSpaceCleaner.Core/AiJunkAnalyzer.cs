@@ -33,7 +33,7 @@ public sealed class AiJunkAnalyzer
         if (!string.IsNullOrWhiteSpace(groq))
         {
             var model = Environment.GetEnvironmentVariable("MACSPACECLEANER_GROQ_MODEL")
-                        ?? "llama-3.3-70b-versatile";
+                        ?? "openai/gpt-oss-20b";
             return new Provider(
                 "Groq",
                 groq.Trim(),
@@ -51,7 +51,7 @@ public sealed class AiJunkAnalyzer
             if (key.StartsWith("gsk_", StringComparison.Ordinal))
             {
                 var model = Environment.GetEnvironmentVariable("MACSPACECLEANER_GROQ_MODEL")
-                            ?? "llama-3.3-70b-versatile";
+                            ?? "openai/gpt-oss-20b";
                 return new Provider(
                     "Groq",
                     key,
@@ -127,47 +127,64 @@ public sealed class AiJunkAnalyzer
             score=100 oznacza typowy śmieć do skasowania. Nie wymyślaj ścieżek spoza listy.
             """;
 
-        var payload = new Dictionary<string, object?>
-        {
-            ["model"] = provider.Model,
-            ["temperature"] = 0.1,
-            ["messages"] = new object[]
+        // Try primary model, then Groq free-tier fallbacks if model was deprecated
+        var modelsToTry = provider.Name == "Groq"
+            ? new[]
             {
-                new { role = "system", content = system },
-                new { role = "user", content = "Zwróć JSON w formie {\"items\":[...]} .\n\nLista:\n" + listBuilder }
+                provider.Model,
+                "openai/gpt-oss-20b",
+                "openai/gpt-oss-120b",
+                "qwen/qwen3.6-27b",
+                "llama-3.1-8b-instant"
+            }.Distinct(StringComparer.Ordinal).ToArray()
+            : new[] { provider.Model };
+
+        string? content = null;
+        string lastError = "";
+        string usedModel = provider.Model;
+
+        foreach (var model in modelsToTry)
+        {
+            ct.ThrowIfCancellationRequested();
+            var attempt = new Provider(provider.Name, provider.ApiKey, provider.Endpoint, model);
+            var payload = BuildPayload(attempt.Model, system, listBuilder.ToString());
+            payload["response_format"] = new { type = "json_object" };
+
+            var (ok, body) = await SendAsync(attempt, payload, ct).ConfigureAwait(false);
+            if (!ok && body.Contains("response_format", StringComparison.OrdinalIgnoreCase))
+            {
+                payload.Remove("response_format");
+                (ok, body) = await SendAsync(attempt, payload, ct).ConfigureAwait(false);
             }
-        };
 
-        // json_object is supported on Groq for many models; if it fails we retry without it
-        payload["response_format"] = new { type = "json_object" };
+            if (!ok)
+            {
+                lastError = body;
+                if (body.Contains("model_not_found", StringComparison.OrdinalIgnoreCase) ||
+                    body.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                return $"{provider.Name}: {FriendlyHttpError(body)}";
+            }
 
-        var (ok, body) = await SendAsync(provider, payload, ct).ConfigureAwait(false);
-        if (!ok && body.Contains("response_format", StringComparison.OrdinalIgnoreCase))
-        {
-            payload.Remove("response_format");
-            (ok, body) = await SendAsync(provider, payload, ct).ConfigureAwait(false);
-        }
-
-        if (!ok)
-            return $"{provider.Name} błąd HTTP: {Truncate(body, 400)}";
-
-        string? content;
-        try
-        {
-            using var doc = JsonDocument.Parse(body);
-            content = doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
-        }
-        catch (Exception ex)
-        {
-            return $"{provider.Name}: nieparsowalna odpowiedź ({ex.Message}): {Truncate(body, 200)}";
+            try
+            {
+                using var doc = JsonDocument.Parse(body);
+                content = doc.RootElement
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString();
+                usedModel = model;
+                break;
+            }
+            catch (Exception ex)
+            {
+                lastError = $"{ex.Message}: {Truncate(body, 200)}";
+            }
         }
 
         if (string.IsNullOrWhiteSpace(content))
-            return $"{provider.Name} nie zwróciło treści.";
+            return $"{provider.Name}: {FriendlyHttpError(lastError)}";
 
         ApplyAiJson(content, batch, provider.Name);
 
@@ -179,7 +196,39 @@ public sealed class AiJunkAnalyzer
         });
 
         var recommended = candidates.Count(c => c.IsRecommended);
-        return $"{provider.Name} ({provider.Model}) ocenił {batch.Count} pozycji. Rekomendowanych łącznie: {recommended}.";
+        return $"{provider.Name} ({usedModel}) ocenił {batch.Count} pozycji. Rekomendowanych łącznie: {recommended}.";
+    }
+
+    private static Dictionary<string, object?> BuildPayload(string model, string system, string listText) =>
+        new()
+        {
+            ["model"] = model,
+            ["temperature"] = 0.1,
+            ["messages"] = new object[]
+            {
+                new { role = "system", content = system },
+                new { role = "user", content = "Zwróć JSON w formie {\"items\":[...]} .\n\nLista:\n" + listText }
+            }
+        };
+
+    private static string FriendlyHttpError(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return "brak odpowiedzi z API.";
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body.Contains('{') ? body[body.IndexOf('{')..] : body);
+            if (doc.RootElement.TryGetProperty("error", out var err) &&
+                err.TryGetProperty("message", out var msg))
+                return msg.GetString() ?? Truncate(body, 180);
+        }
+        catch
+        {
+            // fall through
+        }
+
+        return Truncate(body, 180);
     }
 
     private static async Task<(bool Ok, string Body)> SendAsync(

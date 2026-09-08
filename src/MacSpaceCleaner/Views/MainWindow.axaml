@@ -7,8 +7,8 @@
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
         x:Class="MacSpaceCleaner.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Width="1100" Height="720"
-        MinWidth="900" MinHeight="600"
+        Width="1120" Height="740"
+        MinWidth="920" MinHeight="620"
         Title="MacSpaceCleaner — cały Mac">
 
     <Design.DataContext>
@@ -21,76 +21,143 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,12,0,6" />
         </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Opacity" Value="0.72" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
         <Style Selector="Border.card">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Padding" Value="12" />
             <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style Selector="Border.toolbar">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="Margin" Value="0,0,0,14" />
+        </Style>
+        <Style Selector="Button.tool">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Padding" Value="16,8" />
+        </Style>
+        <Style Selector="Border.chip">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
     </Window.Styles>
 
     <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="16">
-        <!-- Toolbar -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,12">
-            <StackPanel Orientation="Horizontal" Spacing="8" DockPanel.Dock="Left">
-                <Button Content="Skanuj cały Mac"
-                        Command="{Binding ScanCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsOverviewStep}"
-                        Classes="accent" />
-                <Button Content="Odśwież dyski"
-                        Command="{Binding RefreshVolumesCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsOverviewStep}" />
-                <Button Content="Dalej"
-                        Command="{Binding NextCommand}"
-                        IsEnabled="{Binding CanGoNext}"
-                        IsVisible="{Binding IsOverviewStep}"
-                        Classes="accent" />
-                <Button Content="Wstecz"
-                        Command="{Binding BackCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsReviewStep}" />
-                <Button Content="Analizuj AI"
-                        Command="{Binding AnalyzeAiCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsReviewStep}" />
-                <Button Content="Zaznacz rekomendowane"
-                        Command="{Binding SelectRecommendedCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsReviewStep}" />
-                <Button Content="Zaznacz wszystko"
-                        Command="{Binding SelectAllCandidatesCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsReviewStep}" />
-                <Button Content="Odznacz wszystko"
-                        Command="{Binding DeselectAllCandidatesCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsReviewStep}" />
-                <Button Content="Anuluj"
-                        Command="{Binding CancelCommand}"
-                        IsEnabled="{Binding IsBusy}" />
-                <Button Content="Wyczyść zaznaczone…"
-                        Command="{Binding RequestCleanCommand}"
-                        IsEnabled="{Binding !IsBusy}"
-                        IsVisible="{Binding IsReviewStep}"
-                        Classes="accent" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" IsVisible="{Binding IsReviewStep}">
-                <ToggleSwitch IsChecked="{Binding ShowOnlyRecommended}"
-                              OffContent="Wszystkie"
-                              OnContent="Tylko rekomendowane" />
-                <TextBlock Text="{Binding SelectedTotalText}"
-                           VerticalAlignment="Center"
-                           FontWeight="SemiBold" />
-            </StackPanel>
-            <ToggleSwitch Content="Pokaż Dev junk"
-                          IsChecked="{Binding ShowDeveloperJunk}"
-                          OffContent="Dev: ukryte"
-                          OnContent="Dev: widoczne"
-                          HorizontalAlignment="Right"
-                          IsVisible="{Binding IsOverviewStep}" />
-        </DockPanel>
+
+        <!-- ========== OVERVIEW TOOLBAR ========== -->
+        <Border Grid.Row="0" Classes="toolbar" IsVisible="{Binding IsOverviewStep}">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="MacSpaceCleaner" FontSize="20" FontWeight="Bold" />
+                    <TextBlock Classes="muted"
+                               Text="Skanuj dyski, wybierz kategorie, potem przejdź do listy plików." />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1"
+                              VerticalAlignment="Center"
+                              IsChecked="{Binding ShowDeveloperJunk}"
+                              OffContent="Dev: ukryte"
+                              OnContent="Dev: widoczne" />
+
+                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                            Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
+                    <Button Content="Skanuj cały Mac"
+                            Classes="accent primary"
+                            Command="{Binding ScanCommand}"
+                            IsEnabled="{Binding !IsBusy}" />
+                    <Button Content="Dalej →"
+                            Classes="accent primary"
+                            Command="{Binding NextCommand}"
+                            IsEnabled="{Binding CanGoNext}" />
+                    <Button Content="Odśwież dyski"
+                            Classes="tool"
+                            Command="{Binding RefreshVolumesCommand}"
+                            IsEnabled="{Binding !IsBusy}" />
+                    <Button Content="Anuluj"
+                            Classes="tool"
+                            Command="{Binding CancelCommand}"
+                            IsEnabled="{Binding IsBusy}"
+                            IsVisible="{Binding IsBusy}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ========== REVIEW TOOLBAR ========== -->
+        <Border Grid.Row="0" Classes="toolbar" IsVisible="{Binding IsReviewStep}">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Przegląd plików" FontSize="20" FontWeight="Bold" />
+                    <TextBlock Classes="muted" Text="{Binding ReviewSummary}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top">
+                    <Border Classes="chip">
+                        <TextBlock Text="{Binding SelectedTotalText}" FontWeight="SemiBold" />
+                    </Border>
+                    <Button Content="Wyczyść zaznaczone…"
+                            Classes="accent primary"
+                            Command="{Binding RequestCleanCommand}"
+                            IsEnabled="{Binding !IsBusy}" />
+                </StackPanel>
+
+                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                      ColumnDefinitions="Auto,*,Auto" Margin="0,14,0,0">
+                    <!-- Nawigacja -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                        <Button Content="← Wstecz"
+                                Classes="tool"
+                                Command="{Binding BackCommand}"
+                                IsEnabled="{Binding !IsBusy}" />
+                        <Button Content="Analizuj AI"
+                                Classes="tool"
+                                Command="{Binding AnalyzeAiCommand}"
+                                IsEnabled="{Binding !IsBusy}" />
+                        <Button Content="Anuluj"
+                                Classes="tool"
+                                Command="{Binding CancelCommand}"
+                                IsEnabled="{Binding IsBusy}"
+                                IsVisible="{Binding IsBusy}" />
+                    </StackPanel>
+
+                    <!-- Zaznaczanie -->
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                HorizontalAlignment="Center">
+                        <Button Content="Rekomendowane"
+                                Classes="tool"
+                                ToolTip.Tip="Zaznacz tylko pozycje rekomendowane przez analizę"
+                                Command="{Binding SelectRecommendedCommand}"
+                                IsEnabled="{Binding !IsBusy}" />
+                        <Button Content="Wszystkie"
+                                Classes="tool"
+                                Command="{Binding SelectAllCandidatesCommand}"
+                                IsEnabled="{Binding !IsBusy}" />
+                        <Button Content="Żadne"
+                                Classes="tool"
+                                Command="{Binding DeselectAllCandidatesCommand}"
+                                IsEnabled="{Binding !IsBusy}" />
+                    </StackPanel>
+
+                    <!-- Filtr -->
+                    <ToggleSwitch Grid.Column="2"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding ShowOnlyRecommended}"
+                                  OffContent="Wszystkie pliki"
+                                  OnContent="Tylko rekomendowane" />
+                </Grid>
+            </Grid>
+        </Border>
 
         <!-- STEP 0: Overview -->
         <Grid Grid.Row="1" ColumnDefinitions="1.1*,1.4*" IsVisible="{Binding IsOverviewStep}">
@@ -121,8 +188,8 @@
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <TextBlock Text="Kategorie czyszczenia" Classes="section" />
-                    <TextBlock Text="Zaznacz kategorie, przeskanuj, potem „Dalej” — zobaczysz konkretne pliki."
-                               Opacity="0.7" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" Margin="0,0,0,8"
+                               Text="Zaznacz kategorie, przeskanuj, potem „Dalej” — zobaczysz konkretne pliki." />
                     <ItemsControl ItemsSource="{Binding SystemCategories}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:CategoryItemViewModel">
@@ -184,8 +251,8 @@
                     </StackPanel>
 
                     <TextBlock Text="Duże pliki (≥ 500 MB) — podgląd" Classes="section" />
-                    <TextBlock Text="Po „Dalej” też trafią na listę do decyzji (domyślnie odznaczone)."
-                               Opacity="0.7" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" Margin="0,0,0,8"
+                               Text="Po „Dalej” też trafią na listę do decyzji." />
                     <ItemsControl ItemsSource="{Binding LargeFiles}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:LargeFileItemViewModel">
@@ -210,11 +277,9 @@
 
         <!-- STEP 1: File review -->
         <DockPanel Grid.Row="1" IsVisible="{Binding IsReviewStep}">
-            <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
-                <TextBlock Text="Analiza: duże i potencjalnie zbędne" Classes="section" Margin="0" />
-                <TextBlock Text="{Binding ReviewSummary}" TextWrapping="Wrap" Opacity="0.8" FontSize="12" />
-                <TextBlock Text="{Binding AiStatusText}" TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
-            </StackPanel>
+            <Border DockPanel.Dock="Top" Classes="card" Margin="0,0,0,10" Padding="12,10">
+                <TextBlock Text="{Binding AiStatusText}" Classes="muted" />
+            </Border>
             <ListBox ItemsSource="{Binding VisibleCandidates}" Background="Transparent">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:CandidateItemViewModel">
@@ -224,19 +289,20 @@
                                           IsChecked="{Binding IsSelected}"
                                           VerticalAlignment="Top"
                                           Margin="0,0,10,0" />
-                                <StackPanel Grid.Column="1" Spacing="2">
-                                    <DockPanel>
-                                        <TextBlock Text="{Binding RecommendationLabel}"
+                                <StackPanel Grid.Column="1" Spacing="3">
+                                    <DockPanel LastChildFill="True">
+                                        <Border DockPanel.Dock="Left"
+                                                Classes="chip"
+                                                Margin="0,0,8,0"
+                                                Padding="8,3">
+                                            <TextBlock Text="{Binding RecommendationLabel}" FontSize="11" FontWeight="SemiBold" />
+                                        </Border>
+                                        <TextBlock DockPanel.Dock="Left"
+                                                   Text="{Binding ScoreText}"
                                                    FontSize="11"
-                                                   FontWeight="SemiBold"
-                                                   Opacity="0.85"
-                                                   Margin="0,0,8,0"
-                                                   DockPanel.Dock="Left" />
-                                        <TextBlock Text="{Binding ScoreText}"
-                                                   FontSize="11"
-                                                   Opacity="0.6"
-                                                   DockPanel.Dock="Left"
-                                                   Margin="0,0,8,0" />
+                                                   Opacity="0.55"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" />
                                         <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
                                     </DockPanel>
                                     <TextBlock Text="{Binding Path}"
@@ -245,13 +311,11 @@
                                                TextWrapping="Wrap"
                                                FontFamily="Menlo, monospace" />
                                     <TextBlock Text="{Binding AnalysisReason}"
-                                               FontSize="11"
-                                               Opacity="0.85"
+                                               FontSize="12"
+                                               Opacity="0.9"
                                                TextWrapping="Wrap" />
-                                    <TextBlock FontSize="11" Opacity="0.55"
+                                    <TextBlock FontSize="11" Opacity="0.5"
                                                Text="{Binding CategoryTitle}" />
-                                    <TextBlock FontSize="11" Opacity="0.55"
-                                               Text="{Binding AnalysisSource, StringFormat='Źródło: {0}'}" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="2"
                                            Text="{Binding SizeText}"
@@ -259,10 +323,11 @@
                                            VerticalAlignment="Top"
                                            Margin="12,0,12,0" />
                                 <Button Grid.Column="3"
-                                        Content="W Finderze"
+                                        Content="Finder"
+                                        Classes="tool"
                                         Command="{Binding RevealInFinderCommand}"
                                         VerticalAlignment="Top"
-                                        Padding="10,6" />
+                                        ToolTip.Tip="Otwórz folder i wskaż ten plik" />
                             </Grid>
                         </Border>
                     </DataTemplate>
@@ -271,15 +336,15 @@
         </DockPanel>
 
         <!-- Log -->
-        <DockPanel Grid.Row="2" Margin="0,12,0,0" MaxHeight="120">
+        <DockPanel Grid.Row="2" Margin="0,8,0,0" MaxHeight="110">
             <TextBlock Text="Log" Classes="section" DockPanel.Dock="Top" Margin="0,0,0,4" />
             <ListBox ItemsSource="{Binding LogLines}" FontFamily="Menlo, monospace" FontSize="11" />
         </DockPanel>
 
         <!-- Status -->
-        <StackPanel Grid.Row="3" Margin="0,12,0,0" Spacing="6">
-            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" Height="10" />
-            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Opacity="0.9" />
+        <StackPanel Grid.Row="3" Margin="0,10,0,0" Spacing="6">
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" Height="8" />
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Opacity="0.9" FontSize="12" />
         </StackPanel>
 
         <!-- Confirm overlay -->
@@ -297,10 +362,10 @@
                     <TextBlock Text="Potwierdź czyszczenie" FontSize="18" FontWeight="Bold" />
                     <TextBlock Text="{Binding ConfirmSummary}" TextWrapping="Wrap" />
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="Anuluj" Command="{Binding CancelConfirmCommand}" />
+                        <Button Content="Anuluj" Command="{Binding CancelConfirmCommand}" Classes="tool" />
                         <Button Content="Usuń zaznaczone"
                                 Command="{Binding ConfirmCleanCommand}"
-                                Classes="accent" />
+                                Classes="accent primary" />
                     </StackPanel>
                 </StackPanel>
             </Border>

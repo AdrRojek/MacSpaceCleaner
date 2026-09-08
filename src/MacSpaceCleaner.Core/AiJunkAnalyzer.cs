@@ -6,44 +6,96 @@ using MacSpaceCleaner.Core.Models;
 namespace MacSpaceCleaner.Core;
 
 /// <summary>
-/// Optional cloud AI (OpenAI-compatible) ranking for large candidates.
-/// Uses OPENAI_API_KEY or ~/.config/macspacecleaner/openai_api_key.
+/// Optional cloud AI ranking via OpenAI-compatible APIs.
+/// Prefers Groq (free tier), then OpenAI.
 /// </summary>
 public sealed class AiJunkAnalyzer
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(90) };
 
-    public string? ResolveApiKey()
-    {
-        var env = Environment.GetEnvironmentVariable("OPENAI_API_KEY")
-                  ?? Environment.GetEnvironmentVariable("MACSPACECLEANER_OPENAI_KEY");
-        if (!string.IsNullOrWhiteSpace(env))
-            return env.Trim();
+    private sealed record Provider(string Name, string ApiKey, string Endpoint, string Model);
 
+    public string? ResolveApiKey() => ResolveProvider()?.ApiKey;
+
+    public bool IsAvailable => ResolveProvider() is not null;
+
+    public string? ActiveProviderName => ResolveProvider()?.Name;
+
+    private static Provider? ResolveProvider()
+    {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var path = Path.Combine(home, ".config", "macspacecleaner", "openai_api_key");
-        if (File.Exists(path))
+        var configDir = Path.Combine(home, ".config", "macspacecleaner");
+
+        // 1) Explicit Groq
+        var groq = Environment.GetEnvironmentVariable("GROQ_API_KEY")
+                   ?? Environment.GetEnvironmentVariable("MACSPACECLEANER_GROQ_KEY")
+                   ?? ReadKeyFile(Path.Combine(configDir, "groq_api_key"));
+        if (!string.IsNullOrWhiteSpace(groq))
         {
-            var key = File.ReadAllText(path).Trim();
-            if (!string.IsNullOrWhiteSpace(key))
-                return key;
+            var model = Environment.GetEnvironmentVariable("MACSPACECLEANER_GROQ_MODEL")
+                        ?? "llama-3.3-70b-versatile";
+            return new Provider(
+                "Groq",
+                groq.Trim(),
+                "https://api.groq.com/openai/v1/chat/completions",
+                model);
+        }
+
+        // 2) OpenAI / generic (also accept gsk_ via OPENAI_API_KEY pointing at Groq URL)
+        var openai = Environment.GetEnvironmentVariable("OPENAI_API_KEY")
+                     ?? Environment.GetEnvironmentVariable("MACSPACECLEANER_OPENAI_KEY")
+                     ?? ReadKeyFile(Path.Combine(configDir, "openai_api_key"));
+        if (!string.IsNullOrWhiteSpace(openai))
+        {
+            var key = openai.Trim();
+            if (key.StartsWith("gsk_", StringComparison.Ordinal))
+            {
+                var model = Environment.GetEnvironmentVariable("MACSPACECLEANER_GROQ_MODEL")
+                            ?? "llama-3.3-70b-versatile";
+                return new Provider(
+                    "Groq",
+                    key,
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    model);
+            }
+
+            var oaiModel = Environment.GetEnvironmentVariable("MACSPACECLEANER_OPENAI_MODEL")
+                           ?? "gpt-4o-mini";
+            var endpoint = Environment.GetEnvironmentVariable("MACSPACECLEANER_OPENAI_BASE")
+                           ?? "https://api.openai.com/v1/chat/completions";
+            return new Provider("OpenAI", key, endpoint, oaiModel);
         }
 
         return null;
     }
 
-    public bool IsAvailable => !string.IsNullOrWhiteSpace(ResolveApiKey());
+    private static string? ReadKeyFile(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+                return null;
+            var key = File.ReadAllText(path).Trim();
+            return string.IsNullOrWhiteSpace(key) ? null : key;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     public async Task<string> AnalyzeAsync(
         IList<CandidateEntry> candidates,
         IProgress<CleanupProgress>? progress = null,
         CancellationToken ct = default)
     {
-        var apiKey = ResolveApiKey();
-        if (string.IsNullOrWhiteSpace(apiKey))
-            return "Brak klucza API. Ustaw OPENAI_API_KEY albo plik ~/.config/macspacecleaner/openai_api_key";
+        var provider = ResolveProvider();
+        if (provider is null)
+        {
+            return "Brak klucza API. Ustaw GROQ_API_KEY / ~/.config/macspacecleaner/groq_api_key " +
+                   "albo OPENAI_API_KEY.";
+        }
 
-        // Send top heaviest items to keep prompt small
         var batch = candidates
             .OrderByDescending(c => c.SizeBytes)
             .Take(60)
@@ -54,7 +106,7 @@ public sealed class AiJunkAnalyzer
 
         progress?.Report(new CleanupProgress
         {
-            Message = $"AI analizuje {batch.Count} największych pozycji…",
+            Message = $"{provider.Name} analizuje {batch.Count} największych pozycji…",
             Current = 0,
             Total = 1
         });
@@ -69,62 +121,93 @@ public sealed class AiJunkAnalyzer
 
         var system = """
             Jesteś asystentem czyszczenia dysku macOS. Dostajesz listę ścieżek (id|rozmiar|kategoria|typ|ścieżka).
-            Oceń, które pozycje są prawdopodobnie NIEPOTzebne / bezpieczne do usunięcia (cache, kosz, tmp, derived data, stare instalatory),
+            Oceń, które pozycje są prawdopodobnie niepotrzebne / bezpieczne do usunięcia (cache, kosz, tmp, derived data, stare instalatory),
             a które mogą być ważne (dokumenty, zdjęcia, projekty, klucze, Documents, Desktop z unikalnymi danymi).
-            Zwróć WYŁĄCZNIE JSON array obiektów:
-            [{"id":0,"score":0-100,"reason":"krótko po polsku","recommend":true/false}]
+            Zwróć WYŁĄCZNIE JSON: {"items":[{"id":0,"score":0-100,"reason":"krótko po polsku","recommend":true/false}]}
             score=100 oznacza typowy śmieć do skasowania. Nie wymyślaj ścieżek spoza listy.
             """;
 
-        var user = "Lista:\n" + listBuilder;
-
-        var payload = new
+        var payload = new Dictionary<string, object?>
         {
-            model = Environment.GetEnvironmentVariable("MACSPACECLEANER_OPENAI_MODEL") ?? "gpt-4o-mini",
-            temperature = 0.1,
-            response_format = new { type = "json_object" },
-            messages = new object[]
+            ["model"] = provider.Model,
+            ["temperature"] = 0.1,
+            ["messages"] = new object[]
             {
                 new { role = "system", content = system },
-                new { role = "user", content = "Zwróć JSON w formie {\"items\":[...]} .\n\n" + user }
+                new { role = "user", content = "Zwróć JSON w formie {\"items\":[...]} .\n\nLista:\n" + listBuilder }
             }
         };
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        // json_object is supported on Groq for many models; if it fails we retry without it
+        payload["response_format"] = new { type = "json_object" };
 
-        using var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
-        var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-        if (!resp.IsSuccessStatusCode)
-            return $"AI błąd HTTP {(int)resp.StatusCode}: {Truncate(body, 300)}";
+        var (ok, body) = await SendAsync(provider, payload, ct).ConfigureAwait(false);
+        if (!ok && body.Contains("response_format", StringComparison.OrdinalIgnoreCase))
+        {
+            payload.Remove("response_format");
+            (ok, body) = await SendAsync(provider, payload, ct).ConfigureAwait(false);
+        }
 
-        using var doc = JsonDocument.Parse(body);
-        var content = doc.RootElement
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString();
+        if (!ok)
+            return $"{provider.Name} błąd HTTP: {Truncate(body, 400)}";
+
+        string? content;
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            content = doc.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+        }
+        catch (Exception ex)
+        {
+            return $"{provider.Name}: nieparsowalna odpowiedź ({ex.Message}): {Truncate(body, 200)}";
+        }
 
         if (string.IsNullOrWhiteSpace(content))
-            return "AI nie zwróciło treści.";
+            return $"{provider.Name} nie zwróciło treści.";
 
-        ApplyAiJson(content, batch);
+        ApplyAiJson(content, batch, provider.Name);
 
         progress?.Report(new CleanupProgress
         {
-            Message = "Analiza AI zakończona",
+            Message = $"Analiza {provider.Name} zakończona",
             Current = 1,
             Total = 1
         });
 
         var recommended = candidates.Count(c => c.IsRecommended);
-        return $"AI oceniło {batch.Count} pozycji. Rekomendowanych łącznie: {recommended}.";
+        return $"{provider.Name} ({provider.Model}) ocenił {batch.Count} pozycji. Rekomendowanych łącznie: {recommended}.";
     }
 
-    private static void ApplyAiJson(string content, List<CandidateEntry> batch)
+    private static async Task<(bool Ok, string Body)> SendAsync(
+        Provider provider,
+        object payload,
+        CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, provider.Endpoint);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", provider.ApiKey);
+        req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        using var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
+        var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        return (resp.IsSuccessStatusCode, resp.IsSuccessStatusCode ? body : $"{(int)resp.StatusCode} {body}");
+    }
+
+    private static void ApplyAiJson(string content, List<CandidateEntry> batch, string providerName)
     {
         content = content.Trim();
+        // Strip markdown fences if model wraps JSON
+        if (content.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNl = content.IndexOf('\n');
+            var lastFence = content.LastIndexOf("```", StringComparison.Ordinal);
+            if (firstNl >= 0 && lastFence > firstNl)
+                content = content[(firstNl + 1)..lastFence].Trim();
+        }
+
         JsonElement root;
         try
         {
@@ -155,15 +238,15 @@ public sealed class AiJunkAnalyzer
             var c = batch[id];
             var score = el.TryGetProperty("score", out var s) ? s.GetInt32() : c.JunkScore;
             var reason = el.TryGetProperty("reason", out var r) ? r.GetString() : c.AnalysisReason;
-            var recommend = el.TryGetProperty("recommend", out var rec) && rec.ValueKind is JsonValueKind.True or JsonValueKind.False
+            var recommend = el.TryGetProperty("recommend", out var rec) &&
+                            rec.ValueKind is JsonValueKind.True or JsonValueKind.False
                 ? rec.GetBoolean()
                 : score >= 70;
 
-            // Blend with heuristic: take max score so we don't lose strong local signals
             c.JunkScore = Math.Clamp(Math.Max(c.JunkScore, score), 0, 100);
             if (!string.IsNullOrWhiteSpace(reason))
                 c.AnalysisReason = reason;
-            c.AnalysisSource = "AI + heurystyka";
+            c.AnalysisSource = $"{providerName} + heurystyka";
             c.IsRecommended = recommend || c.JunkScore >= 75;
             if (c.IsRecommended && c.JunkScore >= 85)
                 c.IsSelected = true;

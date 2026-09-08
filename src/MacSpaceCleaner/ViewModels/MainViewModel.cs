@@ -64,7 +64,7 @@ public partial class MainViewModel : ViewModelBase
     private bool _showOnlyRecommended = true;
 
     [ObservableProperty]
-    private string _aiStatusText = "Analiza AI: heurystyka lokalna zawsze; chmura OpenAI jeśli jest klucz API.";
+    private string _aiStatusText = "Analiza AI: heurystyka lokalna zawsze; Groq/OpenAI jeśli jest klucz.";
 
     [ObservableProperty]
     private bool _hasOpenAiKey;
@@ -76,9 +76,10 @@ public partial class MainViewModel : ViewModelBase
     public MainViewModel()
     {
         HasOpenAiKey = _aiAnalyzer.IsAvailable;
+        var provider = _aiAnalyzer.ActiveProviderName;
         AiStatusText = HasOpenAiKey
-            ? "Klucz OpenAI wykryty — po „Dalej” uruchomi się też analiza AI największych plików."
-            : "Bez klucza API działa heurystyka lokalna. Opcjonalnie: OPENAI_API_KEY lub ~/.config/macspacecleaner/openai_api_key";
+            ? $"Klucz {provider} wykryty — po „Dalej” uruchomi się też analiza AI największych plików."
+            : "Bez klucza API działa heurystyka lokalna. Preferowane: Groq (~/.config/macspacecleaner/groq_api_key).";
         ReloadCategoryShell();
         RefreshVolumes();
     }
@@ -220,8 +221,8 @@ public partial class MainViewModel : ViewModelBase
             else
             {
                 AiStatusText =
-                    "Heurystyka lokalna OK. Aby dostać ocenę AI z chmury, ustaw OPENAI_API_KEY " +
-                    "lub plik ~/.config/macspacecleaner/openai_api_key i kliknij „Analizuj AI”.";
+                    "Heurystyka lokalna OK. Dla AI ustaw Groq: ~/.config/macspacecleaner/groq_api_key " +
+                    "(albo OPENAI_API_KEY) i kliknij „Analizuj AI”.";
             }
 
             foreach (var entry in built.OrderByDescending(e => e.JunkScore).ThenByDescending(e => e.SizeBytes))
@@ -326,8 +327,8 @@ public partial class MainViewModel : ViewModelBase
         if (!HasOpenAiKey)
         {
             StatusText =
-                "Brak klucza OpenAI. Ustaw zmienną OPENAI_API_KEY albo zapisz klucz w " +
-                "~/.config/macspacecleaner/openai_api_key";
+                "Brak klucza API. Ustaw GROQ_API_KEY / ~/.config/macspacecleaner/groq_api_key " +
+                "albo OPENAI_API_KEY.";
             AiStatusText = StatusText;
             return;
         }

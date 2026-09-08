@@ -26,19 +26,19 @@ dotnet run --project src/MacSpaceCleaner/MacSpaceCleaner.csproj -c Release
 2. **Skan kategorii** z szacunkiem GB (kosz, cache, logi, tmp, Downloads, opcjonalnie Dev junk).
 3. **Dalej** — lista plików/folderów + **analiza**:
    - zawsze **heurystyka lokalna** (cache, kosz, DerivedData, tmp, duże instalatory…),
-   - opcjonalnie **OpenAI** (największe pozycje), jeśli ustawisz klucz.
+   - opcjonalnie **Groq** (darmowy tier) lub OpenAI — największe pozycje.
 4. Filtr **Tylko rekomendowane**, score, powód, **W Finderze**, potem **Wyczyść zaznaczone**.
 
-### Klucz OpenAI (opcjonalnie)
+### Klucz AI (opcjonalnie) — preferowane Groq
 
 ```bash
-export OPENAI_API_KEY="sk-..."
-# albo:
 mkdir -p ~/.config/macspacecleaner
-echo "sk-..." > ~/.config/macspacecleaner/openai_api_key
+echo "gsk_..." > ~/.config/macspacecleaner/groq_api_key
+# albo: export GROQ_API_KEY="gsk_..."
 ```
 
-Model: domyślnie `gpt-4o-mini` (nadpisz `MACSPACECLEANER_OPENAI_MODEL`).
+Model Groq: `llama-3.3-70b-versatile` (nadpisz `MACSPACECLEANER_GROQ_MODEL`).  
+OpenAI nadal działa przez `openai_api_key` / `OPENAI_API_KEY`.
 
 Czyszczenie **wymaga potwierdzenia**. Nie używa `sudo`, nie rusza `/System`, `/Applications` ani całego katalogu domowego.
 

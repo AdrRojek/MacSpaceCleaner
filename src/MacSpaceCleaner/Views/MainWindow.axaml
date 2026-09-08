@@ -36,30 +36,67 @@
                 <Button Content="Skanuj cały Mac"
                         Command="{Binding ScanCommand}"
                         IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsOverviewStep}"
                         Classes="accent" />
                 <Button Content="Odśwież dyski"
                         Command="{Binding RefreshVolumesCommand}"
-                        IsEnabled="{Binding !IsBusy}" />
+                        IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsOverviewStep}" />
+                <Button Content="Dalej"
+                        Command="{Binding NextCommand}"
+                        IsEnabled="{Binding CanGoNext}"
+                        IsVisible="{Binding IsOverviewStep}"
+                        Classes="accent" />
+                <Button Content="Wstecz"
+                        Command="{Binding BackCommand}"
+                        IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsReviewStep}" />
+                <Button Content="Analizuj AI"
+                        Command="{Binding AnalyzeAiCommand}"
+                        IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsReviewStep}" />
+                <Button Content="Zaznacz rekomendowane"
+                        Command="{Binding SelectRecommendedCommand}"
+                        IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsReviewStep}" />
+                <Button Content="Zaznacz wszystko"
+                        Command="{Binding SelectAllCandidatesCommand}"
+                        IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsReviewStep}" />
+                <Button Content="Odznacz wszystko"
+                        Command="{Binding DeselectAllCandidatesCommand}"
+                        IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsReviewStep}" />
                 <Button Content="Anuluj"
                         Command="{Binding CancelCommand}"
                         IsEnabled="{Binding IsBusy}" />
                 <Button Content="Wyczyść zaznaczone…"
                         Command="{Binding RequestCleanCommand}"
-                        IsEnabled="{Binding !IsBusy}" />
+                        IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding IsReviewStep}"
+                        Classes="accent" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" IsVisible="{Binding IsReviewStep}">
+                <ToggleSwitch IsChecked="{Binding ShowOnlyRecommended}"
+                              OffContent="Wszystkie"
+                              OnContent="Tylko rekomendowane" />
+                <TextBlock Text="{Binding SelectedTotalText}"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold" />
             </StackPanel>
             <ToggleSwitch Content="Pokaż Dev junk"
                           IsChecked="{Binding ShowDeveloperJunk}"
                           OffContent="Dev: ukryte"
                           OnContent="Dev: widoczne"
-                          HorizontalAlignment="Right" />
+                          HorizontalAlignment="Right"
+                          IsVisible="{Binding IsOverviewStep}" />
         </DockPanel>
 
-        <Grid Grid.Row="1" ColumnDefinitions="1.1*,1.4*">
-            <!-- Volumes -->
+        <!-- STEP 0: Overview -->
+        <Grid Grid.Row="1" ColumnDefinitions="1.1*,1.4*" IsVisible="{Binding IsOverviewStep}">
             <DockPanel Grid.Column="0" Margin="0,0,12,0">
                 <TextBlock Text="Wolumeny" Classes="section" DockPanel.Dock="Top" />
-                <ListBox ItemsSource="{Binding Volumes}"
-                         Background="Transparent">
+                <ListBox ItemsSource="{Binding Volumes}" Background="Transparent">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border Classes="card">
@@ -81,10 +118,11 @@
                 </ListBox>
             </DockPanel>
 
-            <!-- Categories -->
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <TextBlock Text="Kategorie czyszczenia" Classes="section" />
+                    <TextBlock Text="Zaznacz kategorie, przeskanuj, potem „Dalej” — zobaczysz konkretne pliki."
+                               Opacity="0.7" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
                     <ItemsControl ItemsSource="{Binding SystemCategories}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:CategoryItemViewModel">
@@ -117,8 +155,6 @@
 
                     <StackPanel IsVisible="{Binding ShowDeveloperJunk}">
                         <TextBlock Text="Dev junk (opcjonalnie)" Classes="section" />
-                        <TextBlock Text="Domyślnie wyłączone. Dotyczy cache narzędzi deweloperskich na dysku Maca."
-                                   Opacity="0.7" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
                         <ItemsControl ItemsSource="{Binding DeveloperCategories}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CategoryItemViewModel">
@@ -147,22 +183,19 @@
                         </ItemsControl>
                     </StackPanel>
 
-                    <TextBlock Text="Duże pliki (≥ 500 MB)" Classes="section" />
-                    <TextBlock Text="Zaznacz tylko to, co na pewno chcesz usunąć."
-                               Opacity="0.7" FontSize="12" Margin="0,0,0,8" />
+                    <TextBlock Text="Duże pliki (≥ 500 MB) — podgląd" Classes="section" />
+                    <TextBlock Text="Po „Dalej” też trafią na listę do decyzji (domyślnie odznaczone)."
+                               Opacity="0.7" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
                     <ItemsControl ItemsSource="{Binding LargeFiles}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:LargeFileItemViewModel">
                                 <Border Classes="card">
-                                    <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <CheckBox Grid.Column="0"
-                                                  IsChecked="{Binding IsSelected}"
-                                                  Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="1"
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0"
                                                    Text="{Binding Path}"
                                                    TextWrapping="Wrap"
                                                    FontSize="12" />
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="1"
                                                    Text="{Binding SizeText}"
                                                    FontWeight="SemiBold"
                                                    Margin="12,0,0,0" />
@@ -175,8 +208,70 @@
             </ScrollViewer>
         </Grid>
 
+        <!-- STEP 1: File review -->
+        <DockPanel Grid.Row="1" IsVisible="{Binding IsReviewStep}">
+            <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+                <TextBlock Text="Analiza: duże i potencjalnie zbędne" Classes="section" Margin="0" />
+                <TextBlock Text="{Binding ReviewSummary}" TextWrapping="Wrap" Opacity="0.8" FontSize="12" />
+                <TextBlock Text="{Binding AiStatusText}" TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+            </StackPanel>
+            <ListBox ItemsSource="{Binding VisibleCandidates}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CandidateItemViewModel">
+                        <Border Classes="card">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsSelected}"
+                                          VerticalAlignment="Top"
+                                          Margin="0,0,10,0" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding RecommendationLabel}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Opacity="0.85"
+                                                   Margin="0,0,8,0"
+                                                   DockPanel.Dock="Left" />
+                                        <TextBlock Text="{Binding ScoreText}"
+                                                   FontSize="11"
+                                                   Opacity="0.6"
+                                                   DockPanel.Dock="Left"
+                                                   Margin="0,0,8,0" />
+                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Path}"
+                                               FontSize="11"
+                                               Opacity="0.75"
+                                               TextWrapping="Wrap"
+                                               FontFamily="Menlo, monospace" />
+                                    <TextBlock Text="{Binding AnalysisReason}"
+                                               FontSize="11"
+                                               Opacity="0.85"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock FontSize="11" Opacity="0.55"
+                                               Text="{Binding CategoryTitle}" />
+                                    <TextBlock FontSize="11" Opacity="0.55"
+                                               Text="{Binding AnalysisSource, StringFormat='Źródło: {0}'}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding SizeText}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Top"
+                                           Margin="12,0,12,0" />
+                                <Button Grid.Column="3"
+                                        Content="W Finderze"
+                                        Command="{Binding RevealInFinderCommand}"
+                                        VerticalAlignment="Top"
+                                        Padding="10,6" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
         <!-- Log -->
-        <DockPanel Grid.Row="2" Margin="0,12,0,0" MaxHeight="140">
+        <DockPanel Grid.Row="2" Margin="0,12,0,0" MaxHeight="120">
             <TextBlock Text="Log" Classes="section" DockPanel.Dock="Top" Margin="0,0,0,4" />
             <ListBox ItemsSource="{Binding LogLines}" FontFamily="Menlo, monospace" FontSize="11" />
         </DockPanel>

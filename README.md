@@ -23,14 +23,22 @@ dotnet run --project src/MacSpaceCleaner/MacSpaceCleaner.csproj -c Release
 ## Co robi
 
 1. **Lista wolumenów** — wewnętrzny dysk, ADATA i inne `/Volumes/*` (rozmiar / zajęte / wolne).
-2. **Skan kategorii** z szacunkiem GB:
-   - Kosz (w tym `.Trashes` na dyskach zewnętrznych)
-   - Cache użytkownika (`~/Library/Caches` — wybrane bezpieczne foldery)
-   - Logi (`~/Library/Logs`)
-   - Pliki tymczasowe (`/tmp`, TemporaryItems)
-   - Duże pliki w Downloads (≥ 100 MB)
-   - Lista dużych plików ≥ 500 MB (zaznaczasz ręcznie)
-3. **Dev junk** (przełącznik, domyślnie ukryty / odznaczony): Gradle, CocoaPods, pub-cache, Xcode DerivedData/Archives, Android cache, cache CoreSimulator.
+2. **Skan kategorii** z szacunkiem GB (kosz, cache, logi, tmp, Downloads, opcjonalnie Dev junk).
+3. **Dalej** — lista plików/folderów + **analiza**:
+   - zawsze **heurystyka lokalna** (cache, kosz, DerivedData, tmp, duże instalatory…),
+   - opcjonalnie **OpenAI** (największe pozycje), jeśli ustawisz klucz.
+4. Filtr **Tylko rekomendowane**, score, powód, **W Finderze**, potem **Wyczyść zaznaczone**.
+
+### Klucz OpenAI (opcjonalnie)
+
+```bash
+export OPENAI_API_KEY="sk-..."
+# albo:
+mkdir -p ~/.config/macspacecleaner
+echo "sk-..." > ~/.config/macspacecleaner/openai_api_key
+```
+
+Model: domyślnie `gpt-4o-mini` (nadpisz `MACSPACECLEANER_OPENAI_MODEL`).
 
 Czyszczenie **wymaga potwierdzenia**. Nie używa `sudo`, nie rusza `/System`, `/Applications` ani całego katalogu domowego.
 

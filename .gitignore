@@ -52,3 +52,6 @@ artifacts/
 
 # Local tooling
 dotnet-cli-home/
+
+# Published app binaries (rebuild with scripts/build-app.sh)
+dist/

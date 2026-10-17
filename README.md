@@ -44,11 +44,28 @@ mkdir -p "$NUGET_PACKAGES" "$TMPDIR"
 
 This is only for building/running tooling. The app itself always scans **all** mounted volumes.
 
-## Run
+## Run (easiest)
+
+**Double-click** either of these in Finder:
+
+- `MacSpaceCleaner.command` — one-click launcher  
+- `dist/MacSpaceCleaner.app` — normal macOS app (after first build)
+
+First time (or after code changes), build the app once:
+
+```bash
+./scripts/build-app.sh
+```
+
+That creates `dist/MacSpaceCleaner.app`. Afterwards you can open it like any other Mac app (optional: drag to Dock / Desktop).
+
+### Run from terminal (optional)
 
 ```bash
 cd /path/to/MacSpaceCleaner
 dotnet run --project src/MacSpaceCleaner/MacSpaceCleaner.csproj -c Release
+# or, after publish:
+open dist/MacSpaceCleaner.app
 ```
 
 ### Workflow

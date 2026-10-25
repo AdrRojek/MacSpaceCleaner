@@ -11,6 +11,10 @@ No mystery “one-click wipe.” You always see the files first.
 ![UI](https://img.shields.io/badge/UI-Avalonia-0F766E?style=flat-square)
 ![Safety](https://img.shields.io/badge/delete-confirm%20first-067647?style=flat-square)
 
+<p align="center">
+  <img src="docs/screenshot-main.png" alt="MacSpaceCleaner main window — volumes and cleanup categories" width="900" />
+</p>
+
 ---
 
 ## The problem

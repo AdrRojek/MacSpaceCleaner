@@ -1,110 +1,159 @@
 # MacSpaceCleaner
 
-A macOS desktop utility that finds reclaimable disk space across **all mounted disks for any user** — the internal Macintosh HD / Data volume **and every external drive under `/Volumes`** (USB SSDs, HDDs, SD cards, etc.). It ranks likely junk with local heuristics (optional cloud AI), then deletes only what you confirm.
+**See what’s eating your Mac — then free it, safely.**
 
-Built with **C# / .NET 9** and **Avalonia**.
+MacSpaceCleaner is a native macOS desktop app that scans **every mounted disk** on your computer, finds reclaimable junk (caches, logs, temp files, developer leftovers, oversized downloads), lets you review each path, and deletes **only** what you confirm.
+
+No mystery “one-click wipe.” You always see the files first.
 
 ![.NET](https://img.shields.io/badge/.NET-9-512BD4?style=flat-square)
-![Platform](https://img.shields.io/badge/platform-macOS-000000?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-macOS-111111?style=flat-square)
 ![UI](https://img.shields.io/badge/UI-Avalonia-0F766E?style=flat-square)
+![Safety](https://img.shields.io/badge/delete-confirm%20first-067647?style=flat-square)
 
 ---
 
-## Why it exists
+## The problem
 
-macOS “Storage” often looks full even when Downloads are empty. The real weight is usually developer caches, leftover build artifacts, Xcode DerivedData, Gradle/CocoaPods, browser caches, and forgotten installers — on the **system disk** and on **any attached external disks**.
+Your Mac says storage is almost full, but Downloads look empty and you didn’t install anything huge.
 
-MacSpaceCleaner targets the **whole machine for whoever runs it**, not one hard-coded drive name.
+What usually fills the drive is invisible day-to-day:
 
-## Features
+- App and browser caches  
+- Logs and temporary files  
+- Trash on internal **and** external disks  
+- Xcode DerivedData, Gradle, CocoaPods, Flutter/Dart caches  
+- Old installers and large forgotten files  
 
-- **All disks** — discovers `/`, `/System/Volumes/Data`, and every mount in `/Volumes/*` for the current user
-- **Category scan** — Trash, user caches, logs, temp files, large Downloads, optional developer junk
-- **File-level review** — path, size, checkbox, Reveal in Finder (`open -R`)
-- **Smart ranking** — local heuristics score “safe to delete” candidates
-- **Optional AI** — Groq (preferred) or OpenAI ranks the heaviest items
-- **Safe by design** — no `sudo`, never touches `/System` or `/Applications`, always asks for confirmation
-- **Clear result** — after cleanup, a **Deleted** success screen shows how much space was freed
+That junk sits on the **system Data volume** and on **any USB / external drive** you plug in. Finder’s storage view rarely explains it clearly.
 
-## Requirements
+## What MacSpaceCleaner does
 
-- macOS
-- [.NET 9 SDK](https://dotnet.microsoft.com/download)
+| Step | What you get |
+|------|----------------|
+| **1. Scan** | Lists all volumes (Macintosh HD, Data, every disk under `/Volumes`) with used / free space |
+| **2. Categories** | Measures Trash, user caches, logs, temp files, large Downloads, optional **Dev junk** |
+| **3. Review** | Builds a file-level list with sizes, scores, and reasons |
+| **4. Decide** | Toggle whole rows, open **Finder** on any path, pick Recommended / All / None |
+| **5. Clean** | Confirm once → delete → see a clear **Deleted** summary of space freed |
 
-### Optional: free space for builds
+Optional **AI ranking** (Groq or OpenAI) can highlight the heaviest, safest-to-remove items. Local heuristics always work even without an API key.
 
-If your **system** disk is nearly full and `dotnet restore` fails, temporarily point NuGet/temp to **any** disk with free space (example — replace with your own mount):
+---
 
-```bash
-# Example only — use YOUR external disk path, not a fixed brand name
-export NUGET_PACKAGES="/Volumes/YourExternalDisk/nuget-packages"
-export TMPDIR="/Volumes/YourExternalDisk/tmp"
-mkdir -p "$NUGET_PACKAGES" "$TMPDIR"
-```
+## Highlights
 
-This is only for building/running tooling. The app itself always scans **all** mounted volumes.
+- **All disks, any user** — not tied to one brand of SSD or one folder  
+- **Whole-machine view** — internal storage + externals under `/Volumes`  
+- **Clickable category cards** — tap the whole row to select / deselect  
+- **Reveal in Finder** — jump to the exact file before you delete  
+- **Smart recommendations** — heuristics (+ optional cloud AI)  
+- **Safe defaults** — no `sudo`, no `/System`, no `/Applications`, always confirm  
+- **One-click launch** — double-click the app or `.command` file  
 
-## Run (easiest)
+---
 
-**Double-click** either of these in Finder:
+## Quick start
 
-- `MacSpaceCleaner.command` — one-click launcher  
-- `dist/MacSpaceCleaner.app` — normal macOS app (after first build)
+### Easiest: open like a normal Mac app
 
-First time (or after code changes), build the app once:
+1. Build once (only needed the first time, or after code changes):
 
 ```bash
 ./scripts/build-app.sh
 ```
 
-That creates `dist/MacSpaceCleaner.app`. Afterwards you can open it like any other Mac app (optional: drag to Dock / Desktop).
+2. Double-click either:
 
-### Run from terminal (optional)
+- **`MacSpaceCleaner.command`** — one-click launcher  
+- **`dist/MacSpaceCleaner.app`** — standard macOS application  
+
+You can drag `MacSpaceCleaner.app` to the Dock or Desktop.
+
+### From Terminal (optional)
 
 ```bash
 cd /path/to/MacSpaceCleaner
 dotnet run --project src/MacSpaceCleaner/MacSpaceCleaner.csproj -c Release
-# or, after publish:
+```
+
+Or after publish:
+
+```bash
 open dist/MacSpaceCleaner.app
 ```
 
-### Workflow
+---
 
-1. **Scan Mac** — list every volume + cleanup categories  
-2. **Next** — build the candidate list, run heuristics (+ AI if configured)  
-3. Review / tweak selection (Recommended / All / None, Finder)  
-4. **Clean selected…** — confirm, delete, see the **Deleted** summary  
+## How to use it
 
-## Optional AI keys
+1. Click **Scan Mac** — volumes and category sizes fill in  
+2. Turn on **Dev junk** if you want developer caches included  
+3. Click **Next** — review recommended files and folders  
+4. Adjust selection (Recommended / All / None, or click each card)  
+5. Use **Finder** on anything you’re unsure about  
+6. Click **Clean selected…** → confirm → read the **Deleted** result  
 
-Local heuristics always work. For cloud ranking (per-user config in the home folder):
+---
+
+## Requirements
+
+- macOS 13+  
+- [.NET 9 SDK](https://dotnet.microsoft.com/download) (to build; the published `.app` is self-contained)
+
+### If your system disk is almost full
+
+`dotnet restore` may fail when the Mac has no free space. Point NuGet/temp at **any** disk with room (example — use *your* mount path):
+
+```bash
+export NUGET_PACKAGES="/Volumes/YourExternalDisk/nuget-packages"
+export TMPDIR="/Volumes/YourExternalDisk/tmp"
+mkdir -p "$NUGET_PACKAGES" "$TMPDIR"
+```
+
+This only affects building. The app itself always scans **all** mounted volumes.
+
+---
+
+## Optional AI (cloud ranking)
+
+Local scoring always runs. For extra AI ranking of the largest items:
 
 ```bash
 mkdir -p ~/.config/macspacecleaner
 
-# Preferred (Groq free tier)
+# Preferred — Groq free tier
 echo "gsk_..." > ~/.config/macspacecleaner/groq_api_key
 
 # Or OpenAI
 echo "sk-..." > ~/.config/macspacecleaner/openai_api_key
 ```
 
-Environment variables also work: `GROQ_API_KEY`, `OPENAI_API_KEY`.  
+Also supported: `GROQ_API_KEY`, `OPENAI_API_KEY`.  
 Default Groq model: `openai/gpt-oss-20b` (override with `MACSPACECLEANER_GROQ_MODEL`).
+
+---
 
 ## Project layout
 
 ```
+MacSpaceCleaner.command       Double-click launcher
+scripts/build-app.sh          Builds dist/MacSpaceCleaner.app
 src/MacSpaceCleaner/          Avalonia desktop UI
-src/MacSpaceCleaner.Core/     Volume scan, categories, analyzers, safe delete
+src/MacSpaceCleaner.Core/     Volume scan, categories, AI/heuristics, safe delete
+dist/MacSpaceCleaner.app      Published macOS app (after build)
 ```
 
-## Safety notes
+---
 
-- Deletion is permanent (not always recoverable via Trash)
-- Developer caches will regenerate on the next build
-- Always use **Finder** on unfamiliar paths before deleting
-- Keep a few GB free so restore/build tooling can run
+## Safety
+
+- Deletes are **permanent** (not always recoverable from Trash)  
+- Developer caches come back on the next build — that’s expected  
+- Inspect unfamiliar paths with **Finder** before cleaning  
+- Keep a few GB free so the system and tooling can breathe  
+
+---
 
 ## License
 
